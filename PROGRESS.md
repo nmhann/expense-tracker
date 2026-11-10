@@ -1,21 +1,21 @@
 # Expense Tracker — Progress Log
 
-_Last updated: 10 Nov 2026 · Current phase: **3 — Database** (Phases 1 and 2 ✅ complete)_
+_Last updated: 10 Nov 2026 · Current phase: **4 — Core backend** (Phases 1, 2 and 3 ✅ complete)_
 
 ---
 
 ## Next task
-**Phase 3, Task 7 (last of Phase 3): JPA entities**
-- Write Java classes that map to the tables built by V1–V3, starting with the simple ones (`Category`, `User`), then `Transaction` and `Budget`
-- Learn the mapping annotations as they come up (`@Entity`, `@Table`, `@Id`, `@GeneratedValue`, `@Column`) and what each one is responsible for
-- Decide how entities point at each other (a `User` object vs a plain `userId`) and why
-- Set `spring.jpa.hibernate.ddl-auto=validate` so Hibernate checks at startup that entities match the Flyway-built tables
-- Run the app; success = starts cleanly with no schema validation errors
-- Then the Phase 3 review: short progress review, knowledge gaps, commit, start a **new chat** for Phase 4
+**Start Phase 4 in a NEW chat.** Put `DESIGN.md` and the latest `PROGRESS.md` in project knowledge, then open with: *"Starting Phase 4 (Core backend). Here's my progress."*
 
-**Before starting:** confirm V2 and V3 are committed and pushed (`git status` first), and that `SELECT * FROM categories;` shows the seeded rows.
+**Suggested first steps for Phase 4 (the new chat decides the exact order):**
+1. Explain how Spring wires classes together (dependency injection, beans). This is the biggest open gap and Phase 4 needs it immediately.
+2. Build the simplest slice first: `Category` read-only (`GET /categories`): repository → service → controller.
+3. Then transactions (add, view with filters, edit, delete) with validation, error handling and tests.
+4. Then budgets.
 
-**Thinking question for Task 7:** the database already guarantees the rules (foreign keys, checks, unique). Should the Java code also check them? Why or why not?
+**Habits to keep:** write the first version yourself before asking for a template; before running, compare every column/field name against the migration; commit after every task.
+
+**Thinking question carried into Phase 4:** the database already enforces the rules (foreign keys, checks, unique). Why should the Java code also check them? (Answer to confirm in Phase 4: so the user gets a clear message instead of a raw database error; the database stays the last line of defense.)
 
 ---
 
@@ -30,8 +30,8 @@ One task at a time. Commit after every finished task.
 |---|-------|------|--------|-----------------|
 | 1 | Design | Requirements, entities, relationships, rules, API | ✅ Done | Opus |
 | 2 | Setup | JDK, IntelliJ, Spring Boot project, Git/GitHub | ✅ Done | Sonnet |
-| 3 | Database | PostgreSQL (Docker), JPA entities, Flyway schema from DESIGN.md | 🔶 In progress (6 of 7 tasks) | Sonnet |
-| 4 | Core backend | Transactions, categories, budgets: controller → service → repository, validation, errors, tests | ⬜ | Sonnet; Opus for end-of-phase review |
+| 3 | Database | PostgreSQL (Docker), JPA entities, Flyway schema from DESIGN.md | ✅ Done | Sonnet |
+| 4 | Core backend | Transactions, categories, budgets: controller → service → repository, validation, errors, tests | 🔶 Next | Sonnet; Opus for end-of-phase review |
 | 5 | Summary | Monthly summary calculations | ⬜ | Sonnet |
 | 6 | Security | Register, login, JWT, users only see their own data | ⬜ | Opus |
 | 7 | Frontend | React app using the API | ⬜ | Sonnet |
@@ -48,7 +48,7 @@ One task at a time. Commit after every finished task.
 | 4 | Flyway V1: `users` and `categories` tables | ✅ |
 | 5 | Flyway V2: `transactions` and `budgets` tables (foreign keys, checks, unique constraint) | ✅ |
 | 6 | Seed the fixed category list (Flyway V3, 18 categories for income and expense) | ✅ |
-| 7 | JPA entities mapped to the tables, verify at startup | ⬜ next |
+| 7 | JPA entities mapped to the tables (`Category`, `User`, `Transaction`, `Budget`), verified at startup with `ddl-auto=validate` | ✅ |
 
 **Model rules of thumb**
 - Sonnet: daily work — explanations, small reviews, debugging.
@@ -79,6 +79,9 @@ One task at a time. Commit after every finished task.
 - [x] **Flyway V1 applied:** `users` and `categories` tables created (`Successfully applied 1 migration ... now at version v1`)
 - [x] **Flyway V2 applied:** `transactions` and `budgets` tables with foreign keys to `users` and `categories`, `CHECK` rules (type is INCOME/EXPENSE, amounts positive) and `UNIQUE` on (user, category, month) for budgets
 - [x] **Flyway V3 applied:** `categories` seeded with 18 names (12 expense-type, 6 income-type, e.g. Groceries, Rent, Transport, Salary, Freelance, Family & gifts, Other, Other income)
+- [x] `spring.jpa.hibernate.ddl-auto=validate` set; proved it works by breaking a column name on purpose (`missing column [title] in table [categories]`)
+- [x] **JPA entities written:** `Category` (getters only, fixed seed data), `User` (two constructors, no setters), `Transaction` (with `TransactionType` enum, plain `userId`/`categoryId`), `Budget` (`month` as first-day `LocalDate`, mirrored combined `UNIQUE`)
+- [x] **Phase 3 complete**
 
 ## Concepts learned
 - **Tools:** JDK vs IDE; LTS vs feature releases; `PATH` and `JAVA_HOME`; IntelliJ's per-project JDK; CLI flags (`-v` short vs `--version` long)
@@ -104,12 +107,22 @@ One task at a time. Commit after every finished task.
 - **Seed data:** reference data the app needs (categories) goes in a Flyway migration with `INSERT`, so every environment gets the same rows; `id` is omitted because `BIGSERIAL` generates it
 - **Categories vs `type`:** one shared category list for income and expense; the transaction's `type` decides the direction, so a category like "Family & gifts" works both ways
 - **Rows vs tables:** each category is a *row* in the one `categories` table; a duplicate name is rejected by `UNIQUE`
+- **Entities:** a class mapped to a table (`@Entity`, `@Table`, `@Id`, `@GeneratedValue(IDENTITY)`, `@Column`); one object = one row; entities are the bottom layer: Controller → Service → Repository → Entity ⇄ Database
+- **`Long` vs `long`:** `Long` can be `null` (a new, unsaved object has no id yet); a primitive `long` would default to 0
+- **Encapsulation:** private fields + public getters; the class decides what outsiders may read or change; no setter where nothing should change the value (least privilege); Hibernate fills private fields itself (reflection)
+- **Two constructors:** `protected` empty one for Hibernate; `public` one (everything except `id`) for our own code
+- **`ddl-auto=validate`:** Hibernate checks entities against the Flyway-built tables at startup; `@Column(name = ...)` must match the migration's column name character for character (underscores included). Never use `create`/`update`, Flyway owns the schema
+- **Enums:** fixed set of values (`TransactionType`: INCOME/EXPENSE), one per file, typos fail at compile time; `@Enumerated(EnumType.STRING)` stores the word, not a position number
+- **Ids vs objects in relationships:** storing `Long categoryId` is simple and predictable; `@ManyToOne Category` is more convenient but can trigger hidden extra queries (N+1). We use plain ids for the MVP
+- **Package by feature:** `category/`, `user/`, `transaction/`, `budget/` hold everything about one thing; must be inside the main package so Spring finds them
+- **IDE habit:** autocomplete can import the wrong class (`javax...Generated` instead of `@GeneratedValue`); read the package name in the popup
 
 ## Still unclear / knowledge gaps
 - Spring's hidden magic: how annotations like `@RestController` work, beans, dependency injection (introduced, not yet understood — comes up in Phase 4)
 - Git workflow beyond basics (commit habit started; branches not yet used)
 - Rule vs relationship mix-up from design (one budget per category per month is a *rule*, not a 1-to-1 relationship). Watch for this when writing the budgets table.
-- What JPA/Hibernate actually do in detail (introduced; becomes concrete in Task 7)
+- Spring's wiring is still unexplained: how Spring finds entities and classes, and how objects get handed to each other (dependency injection) — first topic of Phase 4
+- JPA is understood at the mapping level only; repositories (`findAll`, saving, queries) are new in Phase 4
 - V2 needed review fixes (doubled `CHECK`, wrong column name inside a check, `camelCase` column names). Re-check these habits when writing SQL: copy patterns carefully and re-read column names against the table.
 - No database-level rule yet stops a "Salary" being logged as an `EXPENSE`; accepted for the MVP, revisit in validation (Phase 4)
 
@@ -144,6 +157,11 @@ One task at a time. Commit after every finished task.
 | Category list | One shared list for income and expense; `type` decides direction | Matches `DESIGN.md`; simplest for the MVP |
 | Seed list | 18 categories in V3; "Savings" left out | Savings isn't spending and would inflate monthly totals |
 | Changing seeded data later | New migration, never edit V3 | Applied migrations are locked (checksum) |
+| Entity relationships | Plain `Long userId` / `Long categoryId`, not `@ManyToOne` objects | Simpler and predictable; API already uses ids. Revisit only if it earns its place |
+| Transaction type in Java | `TransactionType` enum stored as STRING | Compile-time safety; matches the SQL `CHECK` |
+| Setters on entities | None for now (`Category` never; others added in Phase 4 when editing needs them) | Least privilege; add access later, don't remove it |
+| Hibernate schema mode | `ddl-auto=validate` | Flyway owns the schema; Hibernate only checks |
+| Package structure | By feature (`category`, `user`, `transaction`, `budget`) | Everything about one thing lives together |
 | Table naming | `users` (plural), `snake_case` columns | `user` is a reserved word in Postgres |
 | Excluded | Microservices, Kubernetes, Redis, Kafka, GraphQL | Overkill for project size |
 
@@ -157,7 +175,13 @@ expense-tracker/
 ├── PROGRESS.md
 └── src/main/
     ├── java/com/nour/expense_tracker/
-    │   └── ExpenseTrackerApplication.java
+    │   ├── ExpenseTrackerApplication.java
+    │   ├── category/Category.java
+    │   ├── user/User.java
+    │   ├── transaction/
+    │   │   ├── Transaction.java
+    │   │   └── TransactionType.java
+    │   └── budget/Budget.java
     └── resources/
         ├── application.properties
         └── db/migration/
@@ -165,7 +189,7 @@ expense-tracker/
             ├── V2__create_transactions_and_budgets.sql
             └── V3__seed_categories.sql
 ```
-_Coming in Task 7:_ JPA entity classes in `src/main/java/com/nour/expense_tracker/`
+_Coming in Phase 4:_ repository, service and controller classes inside each feature package
 
 ## Challenges & solutions (for README / interviews)
 - **Installed a non-LTS Java (27) by mistake** → switched to Temurin 25 LTS; learned why companies standardize on LTS releases.
@@ -180,3 +204,7 @@ _Coming in Task 7:_ JPA entity classes in `src/main/java/com/nour/expense_tracke
 - **Renamed an already-applied migration and the app refused to start** → Flyway records each migration's name/checksum, so a mismatch fails startup (a safety feature). Fixed in dev by dropping and recreating the schema so Flyway rebuilt everything; lesson: applied migrations are locked, fix mistakes with a new `V` file, and only reset a throwaway database.
 - **V2 SQL slips caught in review** → doubled `CHECK`, a check naming a column from the example (`status`) instead of mine, and `camelCase` column names that Postgres would silently lowercase. Fixed to `snake_case` and re-read against the table.
 - **Where do the fixed categories come from?** → a seed migration (V3), versioned and identical everywhere, instead of manual inserts or startup code.
+- **IntelliJ autocomplete imported the wrong class** (`javax.annotation.processing.Generated` instead of `@GeneratedValue`), causing confusing red errors → read the package in the autocomplete popup and delete imports I didn't write.
+- **Entity column names must match the migration exactly** (a leftover `TODO`, then `passwordhash` instead of `password_hash`) → `ddl-auto=validate` catches this at startup with a clear message; copy names from the migration file.
+- **Proved validation works instead of trusting it** → renamed a column on purpose and read the `missing column` error, so I'll recognize it when it happens by accident.
+- **Ids vs objects for relationships** → chose plain ids for the MVP after comparing convenience (`@ManyToOne`) against hidden extra queries and complexity.
