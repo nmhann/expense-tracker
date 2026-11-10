@@ -1,16 +1,22 @@
 # Expense Tracker — Progress Log
 
-_Last updated: 8 Nov 2026 · Current phase: **3 — Database** (Phases 1 and 2 ✅ complete)_
+_Last updated: 9 Nov 2026 · Current phase: **3 — Database** (Phases 1 and 2 ✅ complete)_
 
 ---
 
 ## Next task
-**Phase 3, Task 4: first Flyway migration**
-- Add `flyway-core` and `flyway-database-postgresql` to `pom.xml` (no version numbers) and reload Maven
-- Create folder `src/main/resources/db/migration`
-- Create `V1__create_users_and_categories.sql` (two underscores) with the `users` and `categories` tables from `DESIGN.md`
-- Run the app and check the tables exist
-- Then V2: `transactions` and `budgets`
+**Phase 3, Task 5: Flyway V2 — `transactions` and `budgets` tables**
+- Create `src/main/resources/db/migration/V2__create_transactions_and_budgets.sql`
+- Foreign keys: `user_id` → `users(id)`, `category_id` → `categories(id)` (type must be `BIGINT`)
+- `CHECK` constraints for the business rules: transaction type is `INCOME`/`EXPENSE`; amounts are positive
+- Budgets: `UNIQUE (user_id, category_id, month)` (rule 4 in `DESIGN.md`)
+- Amounts as `NUMERIC(12, 2)`; dates as `DATE`; budget `month` stored as `DATE` (first day of the month — my proposal, challenge it)
+- Send the SQL for review **before** running the app. Once V2 runs, never edit it.
+- Verify with: `docker exec -it expense-db psql -U expense_user -d expense_tracker -c "\d transactions"`
+
+**Also open:** tick/commit Task 4 if not yet pushed (`git status` first).
+
+**Thinking question for Task 6:** `categories` is a fixed shared list, but the table is empty. Who inserts Food, Transport, Rent?
 
 ---
 
@@ -25,7 +31,7 @@ One task at a time. Commit after every finished task.
 |---|-------|------|--------|-----------------|
 | 1 | Design | Requirements, entities, relationships, rules, API | ✅ Done | Opus |
 | 2 | Setup | JDK, IntelliJ, Spring Boot project, Git/GitHub | ✅ Done | Sonnet |
-| 3 | Database | PostgreSQL (Docker), JPA entities, Flyway schema from DESIGN.md | 🔶 In progress (3 of ~6 tasks) | Sonnet |
+| 3 | Database | PostgreSQL (Docker), JPA entities, Flyway schema from DESIGN.md | 🔶 In progress (4 of 7 tasks) | Sonnet |
 | 4 | Core backend | Transactions, categories, budgets: controller → service → repository, validation, errors, tests | ⬜ | Sonnet; Opus for end-of-phase review |
 | 5 | Summary | Monthly summary calculations | ⬜ | Sonnet |
 | 6 | Security | Register, login, JWT, users only see their own data | ⬜ | Opus |
@@ -40,9 +46,10 @@ One task at a time. Commit after every finished task.
 | 1 | Run PostgreSQL in Docker | ✅ |
 | 2 | Add a volume so data survives | ✅ |
 | 3 | Connect Spring Boot to the database (JPA, driver, env variables) | ✅ |
-| 4 | Flyway V1: `users` and `categories` tables | ⬜ next |
-| 5 | Flyway V2: `transactions` and `budgets` tables (foreign keys, unique constraint) | ⬜ |
-| 6 | JPA entities mapped to the tables, verify at startup | ⬜ |
+| 4 | Flyway V1: `users` and `categories` tables | ✅ |
+| 5 | Flyway V2: `transactions` and `budgets` tables (foreign keys, checks, unique constraint) | ⬜ next |
+| 6 | Seed the fixed category list (Flyway V3 inserting Food, Transport, Rent, …) | ⬜ |
+| 7 | JPA entities mapped to the tables, verify at startup | ⬜ |
 
 **Model rules of thumb**
 - Sonnet: daily work — explanations, small reviews, debugging.
@@ -68,7 +75,9 @@ One task at a time. Commit after every finished task.
 - [x] Added `spring-boot-starter-data-jpa` and `postgresql` driver to `pom.xml`
 - [x] Datasource configured in `application.properties`; credentials come from environment variables `DB_USER` / `DB_PASSWORD` set in the IntelliJ run configuration
 - [x] App starts and connects (`HikariPool-1 - Start completed`, PostgreSQL 17.11 detected)
-- [x] Set `spring.jpa.open-in-view=false` (recommended to remove a startup warning)
+- [x] Set `spring.jpa.open-in-view=false` (startup warning gone)
+- [x] Added `spring-boot-starter-flyway` and `flyway-database-postgresql` to `pom.xml` (Spring Boot 4 needs the starter, plain `flyway-core` alone is not enough)
+- [x] **Flyway V1 applied:** `users` and `categories` tables created (`Successfully applied 1 migration ... now at version v1`)
 
 ## Concepts learned
 - **Tools:** JDK vs IDE; LTS vs feature releases; `PATH` and `JAVA_HOME`; IntelliJ's per-project JDK; CLI flags (`-v` short vs `--version` long)
@@ -83,12 +92,17 @@ One task at a time. Commit after every finished task.
 - **Config & secrets:** environment variables keep secrets out of code and Git; `${DB_USER}` placeholders in `application.properties`
 - **Database connection:** JDBC URL anatomy (`jdbc:postgresql://host:port/database`); driver vs JPA vs Hibernate vs Hikari connection pool
 - **Debugging logs:** find the *first* `FATAL` / `Caused by` line; the long stack trace after it is just consequences
+- **Flyway & migrations:** a migration is one numbered SQL file (`V1__name.sql`, two underscores) making one change; Flyway runs them in order and records them in `flyway_schema_history`; never edit a migration that already ran (checksum), add a new one instead
+- **SQL basics:** translating a design table to `CREATE TABLE` (entity → plural table, `camelCase` → `snake_case`); `BIGSERIAL PRIMARY KEY` (already unique, so no extra `UNIQUE`); `NOT NULL` vs `UNIQUE` are independent; `VARCHAR` lengths
+- **Checking the database:** `docker exec -it expense-db psql -U expense_user -d expense_tracker -c "\d users"`
+- **How the app reaches Docker:** no direct link; just a port (`-p 5432:5432` + `localhost:5432` in the JDBC URL), so the container must be running
 
 ## Still unclear / knowledge gaps
 - Spring's hidden magic: how annotations like `@RestController` work, beans, dependency injection (introduced, not yet understood — comes up in Phase 4)
 - Git workflow beyond basics (commit habit started; branches not yet used)
 - Rule vs relationship mix-up from design (one budget per category per month is a *rule*, not a 1-to-1 relationship). Watch for this when writing the budgets table.
-- What JPA/Hibernate actually do in detail (introduced; becomes concrete in Task 6)
+- What JPA/Hibernate actually do in detail (introduced; becomes concrete in Task 7)
+- Foreign keys, `CHECK` constraints and combined `UNIQUE` (explained with an example, not yet written by me — V2 is the practice)
 
 ---
 
@@ -112,6 +126,10 @@ One task at a time. Commit after every finished task.
 | DB persistence | Docker named volume `expense-data` | Data survives container removal |
 | Secrets | Environment variables via IntelliJ run config (not committed) | Passwords never reach GitHub |
 | Flyway timing | Added in Task 4, not with JPA | Flyway fails at startup with no migration scripts |
+| Flyway dependencies | `spring-boot-starter-flyway` + `flyway-database-postgresql` | Spring Boot 4 moved Flyway auto-configuration into its own starter |
+| `password_hash` length | `VARCHAR(255)` | Headroom if the hashing algorithm changes |
+| Budget `month` column | `DATE` holding the first day of the month (proposed, confirm in V2) | Postgres has no year-month type |
+| `open-in-view` | `false` | Avoids hidden late queries; easier to set now than later |
 | Table naming | `users` (plural), `snake_case` columns | `user` is a reserved word in Postgres |
 | Excluded | Microservices, Kubernetes, Redis, Kafka, GraphQL | Overkill for project size |
 
@@ -127,9 +145,11 @@ expense-tracker/
     ├── java/com/nour/expense_tracker/
     │   └── ExpenseTrackerApplication.java
     └── resources/
-        └── application.properties
+        ├── application.properties
+        └── db/migration/
+            └── V1__create_users_and_categories.sql
 ```
-_Coming in Task 4:_ `src/main/resources/db/migration/V1__create_users_and_categories.sql`
+_Coming in Task 5:_ `V2__create_transactions_and_budgets.sql`
 
 ## Challenges & solutions (for README / interviews)
 - **Installed a non-LTS Java (27) by mistake** → switched to Temurin 25 LTS; learned why companies standardize on LTS releases.
@@ -139,3 +159,5 @@ _Coming in Task 4:_ `src/main/resources/db/migration/V1__create_users_and_catego
 - **`failed to connect to the docker API`** → Docker Desktop's engine wasn't running; the `docker` CLI only talks to it.
 - **`database "___" does not exist`** → a leftover placeholder in the datasource URL; fixed by reading the first `FATAL` line instead of the 100-line stack trace.
 - **Made data survive container deletion** → added a named volume and proved it from the logs ("Skipping initialization").
+- **Flyway dependency differs in Spring Boot 4** → plain `flyway-core` isn't enough; used `spring-boot-starter-flyway` plus the Postgres module. Lesson: check what the framework version expects, and verify from the logs (`Successfully applied 1 migration`).
+- **Redundant `PRIMARY KEY UNIQUE`** caught in review → a primary key is already unique; extra constraints create duplicate indexes.
