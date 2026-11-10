@@ -1,22 +1,21 @@
 # Expense Tracker — Progress Log
 
-_Last updated: 9 Nov 2026 · Current phase: **3 — Database** (Phases 1 and 2 ✅ complete)_
+_Last updated: 10 Nov 2026 · Current phase: **3 — Database** (Phases 1 and 2 ✅ complete)_
 
 ---
 
 ## Next task
-**Phase 3, Task 5: Flyway V2 — `transactions` and `budgets` tables**
-- Create `src/main/resources/db/migration/V2__create_transactions_and_budgets.sql`
-- Foreign keys: `user_id` → `users(id)`, `category_id` → `categories(id)` (type must be `BIGINT`)
-- `CHECK` constraints for the business rules: transaction type is `INCOME`/`EXPENSE`; amounts are positive
-- Budgets: `UNIQUE (user_id, category_id, month)` (rule 4 in `DESIGN.md`)
-- Amounts as `NUMERIC(12, 2)`; dates as `DATE`; budget `month` stored as `DATE` (first day of the month — my proposal, challenge it)
-- Send the SQL for review **before** running the app. Once V2 runs, never edit it.
-- Verify with: `docker exec -it expense-db psql -U expense_user -d expense_tracker -c "\d transactions"`
+**Phase 3, Task 7 (last of Phase 3): JPA entities**
+- Write Java classes that map to the tables built by V1–V3, starting with the simple ones (`Category`, `User`), then `Transaction` and `Budget`
+- Learn the mapping annotations as they come up (`@Entity`, `@Table`, `@Id`, `@GeneratedValue`, `@Column`) and what each one is responsible for
+- Decide how entities point at each other (a `User` object vs a plain `userId`) and why
+- Set `spring.jpa.hibernate.ddl-auto=validate` so Hibernate checks at startup that entities match the Flyway-built tables
+- Run the app; success = starts cleanly with no schema validation errors
+- Then the Phase 3 review: short progress review, knowledge gaps, commit, start a **new chat** for Phase 4
 
-**Also open:** tick/commit Task 4 if not yet pushed (`git status` first).
+**Before starting:** confirm V2 and V3 are committed and pushed (`git status` first), and that `SELECT * FROM categories;` shows the seeded rows.
 
-**Thinking question for Task 6:** `categories` is a fixed shared list, but the table is empty. Who inserts Food, Transport, Rent?
+**Thinking question for Task 7:** the database already guarantees the rules (foreign keys, checks, unique). Should the Java code also check them? Why or why not?
 
 ---
 
@@ -31,7 +30,7 @@ One task at a time. Commit after every finished task.
 |---|-------|------|--------|-----------------|
 | 1 | Design | Requirements, entities, relationships, rules, API | ✅ Done | Opus |
 | 2 | Setup | JDK, IntelliJ, Spring Boot project, Git/GitHub | ✅ Done | Sonnet |
-| 3 | Database | PostgreSQL (Docker), JPA entities, Flyway schema from DESIGN.md | 🔶 In progress (4 of 7 tasks) | Sonnet |
+| 3 | Database | PostgreSQL (Docker), JPA entities, Flyway schema from DESIGN.md | 🔶 In progress (6 of 7 tasks) | Sonnet |
 | 4 | Core backend | Transactions, categories, budgets: controller → service → repository, validation, errors, tests | ⬜ | Sonnet; Opus for end-of-phase review |
 | 5 | Summary | Monthly summary calculations | ⬜ | Sonnet |
 | 6 | Security | Register, login, JWT, users only see their own data | ⬜ | Opus |
@@ -47,9 +46,9 @@ One task at a time. Commit after every finished task.
 | 2 | Add a volume so data survives | ✅ |
 | 3 | Connect Spring Boot to the database (JPA, driver, env variables) | ✅ |
 | 4 | Flyway V1: `users` and `categories` tables | ✅ |
-| 5 | Flyway V2: `transactions` and `budgets` tables (foreign keys, checks, unique constraint) | ⬜ next |
-| 6 | Seed the fixed category list (Flyway V3 inserting Food, Transport, Rent, …) | ⬜ |
-| 7 | JPA entities mapped to the tables, verify at startup | ⬜ |
+| 5 | Flyway V2: `transactions` and `budgets` tables (foreign keys, checks, unique constraint) | ✅ |
+| 6 | Seed the fixed category list (Flyway V3, 18 categories for income and expense) | ✅ |
+| 7 | JPA entities mapped to the tables, verify at startup | ⬜ next |
 
 **Model rules of thumb**
 - Sonnet: daily work — explanations, small reviews, debugging.
@@ -78,6 +77,8 @@ One task at a time. Commit after every finished task.
 - [x] Set `spring.jpa.open-in-view=false` (startup warning gone)
 - [x] Added `spring-boot-starter-flyway` and `flyway-database-postgresql` to `pom.xml` (Spring Boot 4 needs the starter, plain `flyway-core` alone is not enough)
 - [x] **Flyway V1 applied:** `users` and `categories` tables created (`Successfully applied 1 migration ... now at version v1`)
+- [x] **Flyway V2 applied:** `transactions` and `budgets` tables with foreign keys to `users` and `categories`, `CHECK` rules (type is INCOME/EXPENSE, amounts positive) and `UNIQUE` on (user, category, month) for budgets
+- [x] **Flyway V3 applied:** `categories` seeded with 18 names (12 expense-type, 6 income-type, e.g. Groceries, Rent, Transport, Salary, Freelance, Family & gifts, Other, Other income)
 
 ## Concepts learned
 - **Tools:** JDK vs IDE; LTS vs feature releases; `PATH` and `JAVA_HOME`; IntelliJ's per-project JDK; CLI flags (`-v` short vs `--version` long)
@@ -96,13 +97,21 @@ One task at a time. Commit after every finished task.
 - **SQL basics:** translating a design table to `CREATE TABLE` (entity → plural table, `camelCase` → `snake_case`); `BIGSERIAL PRIMARY KEY` (already unique, so no extra `UNIQUE`); `NOT NULL` vs `UNIQUE` are independent; `VARCHAR` lengths
 - **Checking the database:** `docker exec -it expense-db psql -U expense_user -d expense_tracker -c "\d users"`
 - **How the app reaches Docker:** no direct link; just a port (`-p 5432:5432` + `localhost:5432` in the JDBC URL), so the container must be running
+- **Foreign keys:** `REFERENCES users(id)` makes the database refuse rows that point at something that doesn't exist (proved by a failing test insert); the column type must match the key it points to (`BIGINT` for `BIGSERIAL`)
+- **`CHECK` constraints:** the database enforces business rules (type values, amount > 0), so bugs in Java can't break them; the check must name a column that exists in the same table
+- **Combined `UNIQUE (a, b, c)`:** the *combination* must be unique, each column may repeat alone. It's a **rule**, not a relationship (the earlier design-phase mix-up)
+- **`NUMERIC(12, 2)`:** 12 digits in total, 2 after the decimal point; exact decimals for money (the database version of `BigDecimal`), never `DOUBLE`
+- **Seed data:** reference data the app needs (categories) goes in a Flyway migration with `INSERT`, so every environment gets the same rows; `id` is omitted because `BIGSERIAL` generates it
+- **Categories vs `type`:** one shared category list for income and expense; the transaction's `type` decides the direction, so a category like "Family & gifts" works both ways
+- **Rows vs tables:** each category is a *row* in the one `categories` table; a duplicate name is rejected by `UNIQUE`
 
 ## Still unclear / knowledge gaps
 - Spring's hidden magic: how annotations like `@RestController` work, beans, dependency injection (introduced, not yet understood — comes up in Phase 4)
 - Git workflow beyond basics (commit habit started; branches not yet used)
 - Rule vs relationship mix-up from design (one budget per category per month is a *rule*, not a 1-to-1 relationship). Watch for this when writing the budgets table.
 - What JPA/Hibernate actually do in detail (introduced; becomes concrete in Task 7)
-- Foreign keys, `CHECK` constraints and combined `UNIQUE` (explained with an example, not yet written by me — V2 is the practice)
+- V2 needed review fixes (doubled `CHECK`, wrong column name inside a check, `camelCase` column names). Re-check these habits when writing SQL: copy patterns carefully and re-read column names against the table.
+- No database-level rule yet stops a "Salary" being logged as an `EXPENSE`; accepted for the MVP, revisit in validation (Phase 4)
 
 ---
 
@@ -128,8 +137,13 @@ One task at a time. Commit after every finished task.
 | Flyway timing | Added in Task 4, not with JPA | Flyway fails at startup with no migration scripts |
 | Flyway dependencies | `spring-boot-starter-flyway` + `flyway-database-postgresql` | Spring Boot 4 moved Flyway auto-configuration into its own starter |
 | `password_hash` length | `VARCHAR(255)` | Headroom if the hashing algorithm changes |
-| Budget `month` column | `DATE` holding the first day of the month (proposed, confirm in V2) | Postgres has no year-month type |
+| Budget `month` column | `DATE` holding the first day of the month | Postgres has no year-month type; comparable and sortable |
 | `open-in-view` | `false` | Avoids hidden late queries; easier to set now than later |
+| Money columns | `NUMERIC(12, 2)` | Exact decimals, up to ~10 billion with cents |
+| Notes on a transaction | Use the existing optional `description` (VARCHAR 255); no extra note column | Avoids two fields for the same purpose |
+| Category list | One shared list for income and expense; `type` decides direction | Matches `DESIGN.md`; simplest for the MVP |
+| Seed list | 18 categories in V3; "Savings" left out | Savings isn't spending and would inflate monthly totals |
+| Changing seeded data later | New migration, never edit V3 | Applied migrations are locked (checksum) |
 | Table naming | `users` (plural), `snake_case` columns | `user` is a reserved word in Postgres |
 | Excluded | Microservices, Kubernetes, Redis, Kafka, GraphQL | Overkill for project size |
 
@@ -147,9 +161,11 @@ expense-tracker/
     └── resources/
         ├── application.properties
         └── db/migration/
-            └── V1__create_users_and_categories.sql
+            ├── V1__create_users_and_categories.sql
+            ├── V2__create_transactions_and_budgets.sql
+            └── V3__seed_categories.sql
 ```
-_Coming in Task 5:_ `V2__create_transactions_and_budgets.sql`
+_Coming in Task 7:_ JPA entity classes in `src/main/java/com/nour/expense_tracker/`
 
 ## Challenges & solutions (for README / interviews)
 - **Installed a non-LTS Java (27) by mistake** → switched to Temurin 25 LTS; learned why companies standardize on LTS releases.
@@ -161,3 +177,6 @@ _Coming in Task 5:_ `V2__create_transactions_and_budgets.sql`
 - **Made data survive container deletion** → added a named volume and proved it from the logs ("Skipping initialization").
 - **Flyway dependency differs in Spring Boot 4** → plain `flyway-core` isn't enough; used `spring-boot-starter-flyway` plus the Postgres module. Lesson: check what the framework version expects, and verify from the logs (`Successfully applied 1 migration`).
 - **Redundant `PRIMARY KEY UNIQUE`** caught in review → a primary key is already unique; extra constraints create duplicate indexes.
+- **Renamed an already-applied migration and the app refused to start** → Flyway records each migration's name/checksum, so a mismatch fails startup (a safety feature). Fixed in dev by dropping and recreating the schema so Flyway rebuilt everything; lesson: applied migrations are locked, fix mistakes with a new `V` file, and only reset a throwaway database.
+- **V2 SQL slips caught in review** → doubled `CHECK`, a check naming a column from the example (`status`) instead of mine, and `camelCase` column names that Postgres would silently lowercase. Fixed to `snake_case` and re-read against the table.
+- **Where do the fixed categories come from?** → a seed migration (V3), versioned and identical everywhere, instead of manual inserts or startup code.
