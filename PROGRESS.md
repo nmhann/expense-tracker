@@ -1,21 +1,23 @@
 # Expense Tracker — Progress Log
 
-_Last updated: 10 Nov 2026 · Current phase: **4 — Core backend** (Phases 1, 2 and 3 ✅ complete)_
+_Last updated: 10 Nov 2026 (late night) · Current phase: **4 — Core backend, in progress** (Phases 1, 2 and 3 ✅ complete)_
 
 ---
 
-## Next task
-**Start Phase 4 in a NEW chat.** Put `DESIGN.md` and the latest `PROGRESS.md` in project knowledge, then open with: *"Starting Phase 4 (Core backend). Here's my progress."*
+## Next task (start here tomorrow)
+**Open a chat in the same project and say: *"Continuing Phase 4. Here's my progress."*** (PROGRESS.md and DESIGN.md are in project knowledge.)
 
-**Suggested first steps for Phase 4 (the new chat decides the exact order):**
-1. Explain how Spring wires classes together (dependency injection, beans). This is the biggest open gap and Phase 4 needs it immediately.
-2. Build the simplest slice first: `Category` read-only (`GET /categories`): repository → service → controller.
-3. Then transactions (add, view with filters, edit, delete) with validation, error handling and tests.
-4. Then budgets.
+**Before anything new, close out Phase 4 Tasks 1 and 2:**
+1. Start the database (`docker start expense-db`), then run the app. It must start with no errors, and the logs should show `Found 1 JPA repository interface`. (Fixes to `CategoryService` are applied; a clean run is not yet confirmed.)
+2. If the commit from tonight isn't done: `git status` (scratch files gone, nothing unexpected), then commit `Add CategoryRepository and CategoryService` and push.
 
-**Habits to keep:** write the first version yourself before asking for a template; before running, compare every column/field name against the migration; commit after every task.
+**Then Phase 4 Task 3: `CategoryController` with `GET /categories`.** This finishes the first vertical slice (repository → service → controller). Concepts for the session: `@RestController`, `@GetMapping`, how a controller receives its service by constructor injection, testing the endpoint in the browser.
 
-**Thinking question carried into Phase 4:** the database already enforces the rules (foreign keys, checks, unique). Why should the Java code also check them? (Answer to confirm in Phase 4: so the user gets a clear message instead of a raw database error; the database stays the last line of defense.)
+**Quick check to open the session (one sentence each, in your own words):**
+- Why can't you write `new Greeter()`? (explained at the end of this session; say it back)
+- Why should the Java code check rules the database already enforces? (explained; say it back)
+
+**Habits to keep:** write the first version yourself once a pattern has been shown (templates are fine for brand-new syntax); before running, compare names against the migration; **read the package name in every autocomplete import**; commit after every class or task.
 
 ---
 
@@ -31,14 +33,29 @@ One task at a time. Commit after every finished task.
 | 1 | Design | Requirements, entities, relationships, rules, API | ✅ Done | Opus |
 | 2 | Setup | JDK, IntelliJ, Spring Boot project, Git/GitHub | ✅ Done | Sonnet |
 | 3 | Database | PostgreSQL (Docker), JPA entities, Flyway schema from DESIGN.md | ✅ Done | Sonnet |
-| 4 | Core backend | Transactions, categories, budgets: controller → service → repository, validation, errors, tests | 🔶 Next | Sonnet; Opus for end-of-phase review |
+| 4 | Core backend | Transactions, categories, budgets: controller → service → repository, validation, errors, tests | 🔶 In progress | Sonnet; Opus for end-of-phase review |
 | 5 | Summary | Monthly summary calculations | ⬜ | Sonnet |
 | 6 | Security | Register, login, JWT, users only see their own data | ⬜ | Opus |
 | 7 | Frontend | React app using the API | ⬜ | Sonnet |
 | 8 | AI | Assistant using tool use over the user's data | ⬜ | Opus to design, Sonnet to build |
 | 9 | Ship | Deployment, README, diagrams, API docs | ⬜ | Sonnet |
 
-**Phase 3 tasks**
+**Phase 4 plan**
+1. Category read-only slice: `GET /categories` (repository → service → controller)
+2. Transactions: add, view with filters, edit, delete, with validation, error handling and tests
+3. Budgets
+4. End-of-phase review (Opus)
+
+**Phase 4 tasks**
+
+| # | Task | Status |
+|---|------|--------|
+| 0 | Concept groundwork: interfaces, dependency injection, beans, JpaRepository (Greeter practice done, scratch package deleted) | ✅ |
+| 1 | `CategoryRepository` (interface extending `JpaRepository<Category, Long>`) | ✅ written · ⏳ run + commit to confirm |
+| 2 | `CategoryService` (`@Service`, constructor injection, `getAllCategories()` → `findAll()`) | ✅ fixed after review · ⏳ run + commit to confirm |
+| 3 | `CategoryController`: `GET /categories` | ⬜ next |
+
+**Phase 3 tasks** (all ✅)
 
 | # | Task | Status |
 |---|------|--------|
@@ -56,6 +73,13 @@ One task at a time. Commit after every finished task.
 - Haiku: quick syntax lookups.
 
 **Start a new chat at the start of each phase.** Keep `DESIGN.md` and this file in project knowledge.
+
+**Healthy shutdown routine (end of every session)**
+1. Stop the Spring app (red stop button in IntelliJ).
+2. Make sure work is saved: `git status`, commit, `git push`.
+3. Stop the database gracefully: `docker stop expense-db` (never `docker rm`; the volume keeps the data anyway, but stop is the clean way).
+4. Optionally quit Docker Desktop.
+5. Tomorrow: open Docker Desktop, `docker start expense-db`, then run the app.
 
 ---
 
@@ -82,6 +106,9 @@ One task at a time. Commit after every finished task.
 - [x] `spring.jpa.hibernate.ddl-auto=validate` set; proved it works by breaking a column name on purpose (`missing column [title] in table [categories]`)
 - [x] **JPA entities written:** `Category` (getters only, fixed seed data), `User` (two constructors, no setters), `Transaction` (with `TransactionType` enum, plain `userId`/`categoryId`), `Budget` (`month` as first-day `LocalDate`, mirrored combined `UNIQUE`)
 - [x] **Phase 3 complete**
+- [x] **Phase 4 groundwork:** wrote `Greeter` interface with `EnglishGreeter` / `ArabicGreeter` in a scratch package and saw one method work with either; scratch package deleted
+- [x] **Phase 4 Task 1:** wrote `CategoryRepository extends JpaRepository<Category, Long>` (correct first time with a template; right import)
+- [x] **Phase 4 Task 2:** wrote `CategoryService`; review found the wrong type (`Repository` annotation instead of `CategoryRepository`) and a made-up method name; both fixed (`findAll()`)
 
 ## Concepts learned
 - **Tools:** JDK vs IDE; LTS vs feature releases; `PATH` and `JAVA_HOME`; IntelliJ's per-project JDK; CLI flags (`-v` short vs `--version` long)
@@ -115,16 +142,29 @@ One task at a time. Commit after every finished task.
 - **Enums:** fixed set of values (`TransactionType`: INCOME/EXPENSE), one per file, typos fail at compile time; `@Enumerated(EnumType.STRING)` stores the word, not a position number
 - **Ids vs objects in relationships:** storing `Long categoryId` is simple and predictable; `@ManyToOne Category` is more convenient but can trigger hidden extra queries (N+1). We use plain ids for the MVP
 - **Package by feature:** `category/`, `user/`, `transaction/`, `budget/` hold everything about one thing; must be inside the main package so Spring finds them
-- **IDE habit:** autocomplete can import the wrong class (`javax...Generated` instead of `@GeneratedValue`); read the package name in the popup
+- **IDE habit:** autocomplete can import the wrong class (`javax...Generated` instead of `@GeneratedValue`, and `stereotype.Repository` instead of our own `CategoryRepository`); read the package name in the popup
+- **Interfaces:** a list of promises (method signatures, no bodies); you can't `new` one because it has no code to run when its methods are called; code that depends on the promise works with any class that keeps it (`printGreeting(Greeter)` works with English or Arabic)
+- **`extends` vs `implements`:** class → interface = `implements`; class → class = `extends`; **interface → interface = `extends`**. `CategoryRepository` extends `JpaRepository`; the class that implements it is generated by Spring at startup
+- **Uses vs is-a:** the service does **not** implement the repository; it *holds* one in a field and calls its methods. `extends`/`implements` = "becomes/keeps the promise of"; field + constructor = "needs and uses"
+- **`JpaRepository<Entity, IdType>`:** a ready-made Spring Data interface with `findAll`, `findById`, `save`, `deleteById`, `count`; the two generics say which entity and which id type; sits on top of `CrudRepository`; custom query methods (e.g. `findByUserIdAndDateBetween`) can be added later
+- **Dependency injection and beans:** a bean is an object Spring creates and manages; a class declares what it needs in its constructor and Spring supplies the matching bean by **type**; stereotype annotations (`@Service`, `@RestController`, `@Repository`) are labels saying "manage this class"; Spring scans from the main package downward. Spring builds the repository because its code is identical boilerplate for every table, and hands over one shared instance so classes never build their own (and tests can pass a fake)
+- **Constructor injection, line by line:** `private final CategoryRepository repository;` reserves a spot (hidden from others, set once); the constructor asks for a repository; `this.repository = repository;` stores what Spring supplies
+- **`private` / `final` / `public`:** `private` hides internals (the controller must only reach the service, never the repository); `final` means set once in the constructor; `public` is for what others must use (the class, the constructor, `getAllCategories()`); e.g. a future `TransactionService` in another package will need `CategoryService` to be public
+- **Layer jobs:** repository = how to get/save data; service = the rules about that data; controller = the web address. Same three classes for every feature
+- **Why check rules in Java too:** the database does enforce them, but answers with a raw technical error; the service gives the user a clear message, and the database stays the last line of defense (explained to me; to be restated in own words)
+- **Why not plain JDBC:** saw (read, did not run) the manual version: connection, SQL string, `ResultSet` loop, per-column mapping, positional parameters, no compile-time checking. JpaRepository replaces all of it with one interface line
 
 ## Still unclear / knowledge gaps
-- Spring's hidden magic: how annotations like `@RestController` work, beans, dependency injection (introduced, not yet understood — comes up in Phase 4)
+- **Interfaces** are better but not yet solid; the "why can't you `new` an interface" and "why check rules in Java" answers were explained to me and need restating in own words
+- **Dependency injection** understood through examples; will be proved by seeing the app start and then the controller receive the service
+- Spring's hidden magic beyond DI: how `@RestController` and request mapping work (comes with Task 3)
 - Git workflow beyond basics (commit habit started; branches not yet used)
 - Rule vs relationship mix-up from design (one budget per category per month is a *rule*, not a 1-to-1 relationship). Watch for this when writing the budgets table.
-- Spring's wiring is still unexplained: how Spring finds entities and classes, and how objects get handed to each other (dependency injection) — first topic of Phase 4
-- JPA is understood at the mapping level only; repositories (`findAll`, saving, queries) are new in Phase 4
+- JPA is understood at the mapping level; repositories are new (`findAll` introduced, saving and custom queries still to come)
 - V2 needed review fixes (doubled `CHECK`, wrong column name inside a check, `camelCase` column names). Re-check these habits when writing SQL: copy patterns carefully and re-read column names against the table.
 - No database-level rule yet stops a "Salary" being logged as an `EXPENSE`; accepted for the MVP, revisit in validation (Phase 4)
+- Reading compiler errors and using autocomplete carefully (wrong import twice now; made-up method name in the service)
+- Working style: asked for templates and exact answers when stuck on brand-new syntax; fine for first exposure, but once a pattern has been shown, attempt the first version before asking. Prefers short answers with examples from this project, no outside analogies
 
 ---
 
@@ -163,6 +203,9 @@ One task at a time. Commit after every finished task.
 | Hibernate schema mode | `ddl-auto=validate` | Flyway owns the schema; Hibernate only checks |
 | Package structure | By feature (`category`, `user`, `transaction`, `budget`) | Everything about one thing lives together |
 | Table naming | `users` (plural), `snake_case` columns | `user` is a reserved word in Postgres |
+| Repositories | Interfaces extending `JpaRepository<Entity, Long>`, one per entity, inside the feature package | Spring Data generates the implementation; no hand-written SQL for basic operations |
+| Dependency injection style | Constructor injection with a `private final` field | Dependencies are explicit, can't be changed later, easy to test |
+| Layers for even simple endpoints | Controller → Service → Repository, even when the service adds no logic yet | Keeps the structure consistent as transactions and budgets add rules |
 | Excluded | Microservices, Kubernetes, Redis, Kafka, GraphQL | Overkill for project size |
 
 ---
@@ -176,7 +219,10 @@ expense-tracker/
 └── src/main/
     ├── java/com/nour/expense_tracker/
     │   ├── ExpenseTrackerApplication.java
-    │   ├── category/Category.java
+    │   ├── category/
+    │   │   ├── Category.java
+    │   │   ├── CategoryRepository.java
+    │   │   └── CategoryService.java
     │   ├── user/User.java
     │   ├── transaction/
     │   │   ├── Transaction.java
@@ -189,7 +235,7 @@ expense-tracker/
             ├── V2__create_transactions_and_budgets.sql
             └── V3__seed_categories.sql
 ```
-_Coming in Phase 4:_ repository, service and controller classes inside each feature package
+_Coming next:_ `CategoryController`; then repository, service and controller classes for transactions and budgets
 
 ## Challenges & solutions (for README / interviews)
 - **Installed a non-LTS Java (27) by mistake** → switched to Temurin 25 LTS; learned why companies standardize on LTS releases.
@@ -208,3 +254,5 @@ _Coming in Phase 4:_ repository, service and controller classes inside each feat
 - **Entity column names must match the migration exactly** (a leftover `TODO`, then `passwordhash` instead of `password_hash`) → `ddl-auto=validate` catches this at startup with a clear message; copy names from the migration file.
 - **Proved validation works instead of trusting it** → renamed a column on purpose and read the `missing column` error, so I'll recognize it when it happens by accident.
 - **Ids vs objects for relationships** → chose plain ids for the MVP after comparing convenience (`@ManyToOne`) against hidden extra queries and complexity.
+- **Same autocomplete trap in the service** → imported Spring's `@Repository` annotation and used it as a type instead of my own `CategoryRepository`; lesson: stereotype annotations are labels, not types, and injection works by the type you declare.
+- **Wanted to understand the "long way" before the framework shortcut** → compared plain JDBC (connection, SQL string, row mapping, closing resources) with `JpaRepository`, which made clear what the interface replaces.
